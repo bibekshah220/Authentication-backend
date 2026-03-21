@@ -129,3 +129,51 @@ export const verifyUser = TryCatch(async (req, res) => {
     },  
   });
 });
+
+export const loginUser = TryCatch(async (req, res) => {
+  const sanitizedData = sanitize(req.body);
+  const validation = loginSchema.safeParse(sanitizedData);
+
+  if (!validation.success) {
+    const zodError = validation.error;
+    let firstErrorMessage = "validation failed";
+    let allErrors = [];
+    if (zodError?.issues && Array.isArray(zodError.issues)) {
+      allErrors = zodError.issues.map((issue) => ({
+        fields: issue.path ? issue.path.join(".") : "unknown",
+        message: issue.message || "validation error",
+        code: issue.code,
+      }));
+      firstErrorMessage = allErrors[0]?.message || "validation error";
+    }
+    return res.status(400).json({
+      message: firstErrorMessage,
+      errors: allErrors,
+    });
+  }
+
+  const { email, password } = validation.data;
+  const existingUser = await user.findOne({ email });
+  if (!existingUser) {
+    return res.status(400).json({
+      message: "Invalid email or password",
+    });
+  }
+
+  const isPasswordValid = await bcrypt.compare(password, existingUser.password);
+  if (!isPasswordValid) {
+    return res.status(400).json({
+      message: "Invalid email or password",
+    });
+  }
+
+  // You can add JWT or session logic here if needed
+  return res.status(200).json({
+    message: "Login successful",
+    user: {
+      id: existingUser._id,
+      name: existingUser.name,
+      email: existingUser.email,
+    },
+  });
+});
