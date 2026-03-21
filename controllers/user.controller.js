@@ -153,8 +153,17 @@ export const loginUser = TryCatch(async (req, res) => {
   }
 
   const { email, password } = validation.data;
+  const ratelimitKey = `login-rate-limit:${req.ip}:${email}`;
+
+  if (await redisClient.get(ratelimitKey)) {
+    return res.status(429).json({
+      message: "Too many login attempts. Please try again later.",
+    });
+  }
+
   const existingUser = await user.findOne({ email });
   if (!existingUser) {
+    await redisClient.set(ratelimitKey, "true", { EX: 60 });
     return res.status(400).json({
       message: "Invalid email or password",
     });
@@ -162,12 +171,14 @@ export const loginUser = TryCatch(async (req, res) => {
 
   const isPasswordValid = await bcrypt.compare(password, existingUser.password);
   if (!isPasswordValid) {
+    await redisClient.set(ratelimitKey, "true", { EX: 60 });
     return res.status(400).json({
       message: "Invalid email or password",
     });
   }
 
-  // You can add JWT or session logic here if needed
+  await redisClient.del(ratelimitKey); 
+
   return res.status(200).json({
     message: "Login successful",
     user: {
