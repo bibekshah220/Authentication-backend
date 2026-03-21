@@ -77,3 +77,50 @@ await redisClient.set(ratemitKey, "true", {EX: 60});
    message: "If your email is valid, a verification link has been sent. it will expire in 5 minutes",
   });
 });
+
+
+export const verifyUser = TryCatch(async (req, res) => {
+  const { token } = req.params;
+  if (!token) {
+    return res.status(400).json({
+      message: "Verification token is required",
+    });
+  }
+
+  const verifykey = `verify:${token}`;
+  const userData = await redisClient.get(verifykey);
+  if (!userData) {
+    return res.status(400).json({
+      message: "Invalid or expired verification token",
+    });
+  }
+
+  await redisClient.del(verifykey);
+  let userdata;
+  try {
+    userdata = typeof userData === "string" ? JSON.parse(userData) : userData;
+  } catch (err) {
+    return res.status(500).json({
+      message: "Failed to parse user data from verification token.",
+    });
+  }
+
+  const existingUser = await user.findOne({ email: userdata.email });
+  if (existingUser) {
+    return res.status(400).json({
+      message: "User with this email already exists",
+    });
+  }
+
+  const newUser = new user({
+    name: userdata.name,
+    email: userdata.email,
+    password: userdata.password,
+  });
+
+  await newUser.save();
+
+  return res.status(201).json({
+    message: "User verified and created successfully",
+  });
+});
