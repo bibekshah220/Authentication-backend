@@ -6,6 +6,18 @@ export const registerUser = TryCatch(async(req, res) => {
 
     const sanitizedData = sanitize(req.body);
     const validation = registerSchema.safeParse(sanitizedbody);
+ 
+    if(!validation.success) {
+        return res.status(400).json({
+            message: "Validation failed",
+        });
+    }
+
+    const { name, email, password } = validation.data;
+
+
+
+
 
 res.json({
     name,
