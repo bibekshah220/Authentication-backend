@@ -122,5 +122,10 @@ export const verifyUser = TryCatch(async (req, res) => {
 
   return res.status(201).json({
     message: "User verified and created successfully",
+    user: {
+      id: newUser._id,
+      name: newUser.name,
+      email: newUser.email,
+    },  
   });
 });
