@@ -1,7 +1,8 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import { registerUser } from './controllers/user.controller.js';
-import sanitize from 'mongo-sanitize';
+
+import { createClient } from 'redis';
 
 
 dotenv.config({ path: './.env' });    
@@ -13,8 +14,23 @@ import connectDB from './config/db.js';
 
 await connectDB();
 
+const redisUrl = process.env.REDIS_URL;
 
+if (!redisUrl) {
+  console.error('missing REDIS_URL in environment variables');
+  process.exit(1);
+}
 
+export const redisClient = createClient({
+  url: redisUrl,
+});
+
+redisClient.connect().then(() => {
+  console.log('Connected to Redis successfully');
+}).catch((error) => {
+  console.error('Failed to connect to Redis:', error.message);
+  process.exit(1);
+}); 
 
 const app = express();
 // middlewares
