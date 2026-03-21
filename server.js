@@ -26,9 +26,6 @@ import userRoutes from './routes/user.js';
 // using routes
 app.use("/api/v1", userRoutes);
 
-router.post("/register", registerUser);
-
-
 const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, () => {
