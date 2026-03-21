@@ -66,9 +66,7 @@ await redisClient.set(verifykey, dataStore, {EX: 300})
 
 const subject = "verify your email for account creation";
 const html= getVerifyEmailHtml({
-    email,
-    subject,
-    html
+    email, token: verfiedtoken,
 })
 
 await sendEmail(email, subject, html);
