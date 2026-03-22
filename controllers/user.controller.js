@@ -225,7 +225,17 @@ export const verifyOtp = TryCatch(async (req, res) => {
       email: foundUser.email,
     },
   });
-
-
-
 });
+
+export  const myProfile = TryCatch(async (req, res) => {
+  const user = req.user;
+  res.json({
+    message: "User profile fetched successfully",
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+    },
+  });
+});
+

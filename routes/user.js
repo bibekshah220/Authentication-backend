@@ -12,6 +12,8 @@ router.post("/request-otp", requestOtp);
 router.post("/verify-otp", verifyOtp);
 router.post("/refresh-token", refreshToken);
 router.post("/logout", logoutUser);
+router.get("/profile", isAuth, myProfile);
+
 
 
 export default router;
