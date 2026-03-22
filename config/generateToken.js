@@ -22,5 +22,12 @@ res.cookie("accessToken", accessToken, {
     sameSite: "strict",
     maxAge: 15 * 24 * 60 * 60 * 1000,
 }); 
-     
-};
+res.cookie("refreshToken", refreshToken, {
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    sameSite: "none",
+    secure: true,
+});
+
+return { accessToken, refreshToken };
+}
