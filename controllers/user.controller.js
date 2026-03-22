@@ -218,7 +218,35 @@ res.json({
   message: "if your email is valid, an OTP has been sent to your email address. it will expire in 5 minutes",
 });
 
+});
 
+export const verifyOtp = TryCatch(async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    return res.status(400).json({
+      message: "please provide all details",
+    });
+  }
+
+  const otpKey = `otp:${email}`;
+
+  const storeotpstring = await redisClient.get(otpKey);
+  if (!storeotpstring) {
+    return res.status(400).json({
+      message: "Invalid or expired OTP",
+    });
+  }
+
+  const storeotp = JSON.parse(storeotpstring);
+  if (storeotp.otp !== otp) {
+    return res.status(400).json({
+      message: "Invalid OTP",
+    });
+  }
 
 
 });
+
+
+
+
