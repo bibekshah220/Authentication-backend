@@ -1,9 +1,9 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import { registerUser } from './controllers/user.controller.js';
-
+import userRoutes from './routes/user.js';
 import { createClient } from 'redis';
-
+import cookieParser from 'cookie-parser';
 
 dotenv.config({ path: './.env' });    
 
@@ -35,9 +35,8 @@ redisClient.connect().then(() => {
 const app = express();
 // middlewares
 app.use(express.json());
+app.use(cookieParser());
 
-// import routes
-import userRoutes from './routes/user.js';
 
 // using routes
 app.use("/api/v1", userRoutes);
