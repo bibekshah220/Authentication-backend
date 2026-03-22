@@ -300,3 +300,25 @@ export const updateProfile = TryCatch(async (req, res) => {
     },
   });
 });
+
+export const changePassword = TryCatch(async (req, res) => {
+  const userObj = req.user;
+  const { oldPassword, newPassword } = req.body;
+  if (!oldPassword || !newPassword) {
+    return res.status(400).json({
+      message: "Please provide old and new password",
+    });
+  } 
+  const isOldPasswordValid = await bcrypt.compare(oldPassword, userObj.password);
+  if (!isOldPasswordValid) {
+    return res.status(400).json({
+      message: "Old password is incorrect",
+    });
+  }
+  userObj.password = await bcrypt.hash(newPassword, 10);
+  await userObj.save();
+  await redisClient.del(`user:${userObj._id}`);
+  return res.json({
+    message: "Password changed successfully",
+  });
+});

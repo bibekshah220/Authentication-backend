@@ -18,9 +18,6 @@ router.post("/change-password", isAuth, changePassword);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password/:token", resetPassword); 
 router.post("/delete-account", isAuth, deleteAccount);
-  
-
-
 
 export default router;
 
