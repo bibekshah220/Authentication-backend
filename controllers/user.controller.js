@@ -1,5 +1,4 @@
-
-import { verifyRefreshToken } from "../config/generateToken.js";
+import { generateAccessToken, verifyRefreshToken } from "../config/generateToken.js";
 import { loginSchema } from "../config/zod.js";
 
 export const registerUser = TryCatch(async (req, res) => {
@@ -18,7 +17,7 @@ export const registerUser = TryCatch(async (req, res) => {
         code: issue.code,
       }));
 
-       firstErrorMessage = allErrors[0]?.message||"validation Error";
+      firstErrorMessage = allErrors[0]?.message || "validation Error";
     }
 
     return res.status(400).json({
@@ -31,7 +30,7 @@ export const registerUser = TryCatch(async (req, res) => {
 
   const ratemitKey = `register-rate-limit${req.ip}:${email}`;
 
-  if(await redisClient.get(ratemitKey)){
+  if (await redisClient.get(ratemitKey)) {
     return res.status(429).json({
       message: "Too many registration attempts. Please try again later.",
     });
@@ -45,31 +44,32 @@ export const registerUser = TryCatch(async (req, res) => {
     });
   }
 
-const hashedPassword = await bcrypt.hash(password, 10);
-const verfiedtoken = crypto.randomBytes(32).toString("hex");
-const verifykey = `verify:${verfiedtoken}`;
-const dataStore = {
-  name,
-  email,
-  password: hashedPassword,
-};
-// Store as JSON string
-await redisClient.set(verifykey, JSON.stringify(dataStore), { EX: 300 });
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const verfiedtoken = crypto.randomBytes(32).toString("hex");
+  const verifykey = `verify:${verfiedtoken}`;
+  const dataStore = {
+    name,
+    email,
+    password: hashedPassword,
+  };
+  // Store as JSON string
+  await redisClient.set(verifykey, JSON.stringify(dataStore), { EX: 300 });
 
-const subject = "verify your email for account creation";
-const html= getVerifyEmailHtml({
-    email, token: verfiedtoken,
-})
+  const subject = "verify your email for account creation";
+  const html = getVerifyEmailHtml({
+    email,
+    token: verfiedtoken,
+  });
 
-await sendEmail(email, subject, html);
+  await sendEmail(email, subject, html);
 
-await redisClient.set(ratemitKey, "true", {EX: 60});
+  await redisClient.set(ratemitKey, "true", { EX: 60 });
 
   return res.json({
-   message: "If your email is valid, a verification link has been sent. it will expire in 5 minutes",
+    message:
+      "If your email is valid, a verification link has been sent. it will expire in 5 minutes",
   });
 });
-
 
 export const verifyUser = TryCatch(async (req, res) => {
   const { token } = req.params;
@@ -118,7 +118,7 @@ export const verifyUser = TryCatch(async (req, res) => {
       id: newUser._id,
       name: newUser.name,
       email: newUser.email,
-    },  
+    },
   });
 });
 
@@ -169,7 +169,7 @@ export const loginUser = TryCatch(async (req, res) => {
     });
   }
 
-  await redisClient.del(ratelimitKey); 
+  await redisClient.del(ratelimitKey);
 
   // Instead of returning login success here, send OTP for 2FA
   const otp = Math.floor(10000 + Math.random() * 90000).toString();
@@ -180,9 +180,9 @@ export const loginUser = TryCatch(async (req, res) => {
   await sendEmail(email, subject, html);
   await redisClient.set(ratelimitKey, "true", { EX: 60 });
   return res.json({
-    message: "If your email is valid, an OTP has been sent to your email address. It will expire in 5 minutes",
+    message:
+      "If your email is valid, an OTP has been sent to your email address. It will expire in 5 minutes",
   });
-
 });
 
 export const verifyOtp = TryCatch(async (req, res) => {
@@ -228,7 +228,7 @@ export const verifyOtp = TryCatch(async (req, res) => {
   });
 });
 
-export  const myProfile = TryCatch(async (req, res) => {
+export const myProfile = TryCatch(async (req, res) => {
   const user = req.user;
   res.json({
     message: "User profile fetched successfully",
@@ -246,8 +246,8 @@ export const refreshToken = TryCatch(async (req, res) => {
     return res.status(401).json({
       message: "Refresh token not provided",
     });
-  }   
-})
+  }
+});
 
 const decoded = await verifyRefreshToken(refreshToken);
 if (!decoded) {
@@ -255,3 +255,8 @@ if (!decoded) {
     message: "Invalid refresh token",
   });
 }
+
+  generateAccessToken(decoded.id, res);
+  return res.json({
+    message: "Access token refreshed successfully",
+  });
