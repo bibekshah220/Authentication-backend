@@ -322,3 +322,28 @@ export const changePassword = TryCatch(async (req, res) => {
     message: "Password changed successfully",
   });
 });
+
+export const forgotPassword = TryCatch(async (req, res) => {
+  const { email } = req.body; 
+  if (!email) {
+    return res.status(400).json({
+      message: "Email is required",
+    });
+  } 
+  const existingUser = await user.findOne({ email });
+  if (!existingUser) {
+    return res.status(400).json({
+      message: "User with this email does not exist",
+    });
+  }
+  const resetToken = crypto.randomBytes(32).toString("hex");
+  const resetKey = `reset:${resetToken}`;
+  await redisClient.set(resetKey, JSON.stringify({ id: existingUser._id }), { EX: 900 });   
+  const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+  const subject = "Password Reset Request";
+  const html = `<p>You requested a password reset. Click the link below to reset your password:</p><a href="${resetLink}">Reset Password</a><p>This link will expire in 15 minutes.</p>`;
+  await sendEmail(email, subject, html);  
+  return res.json({
+    message: "Password reset link has been sent to your email if it exists in our system",
+  });
+} );  
