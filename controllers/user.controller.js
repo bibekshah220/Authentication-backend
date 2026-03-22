@@ -6,7 +6,7 @@ import { user } from "../models/user.js";
 import bcrypt from "bcrypt";    
 import crypto from "crypto";    
 import sendEmail from "../config/sendMail.js";
-import { getVerifyEmailHtml } from "../config/html.js";
+import { getOtpHtml, getVerifyEmailHtml } from "../config/html.js";
 
 export const registerUser = TryCatch(async (req, res) => {
   const sanitizedData = sanitize(req.body);
@@ -187,4 +187,35 @@ export const loginUser = TryCatch(async (req, res) => {
       email: existingUser.email,
     },
   });
+
+  const user = await user.findOne({ email });
+  if (!user) {
+    return res.status(400).json({
+      message: "Invalid email or password",
+    });
+  }
+const comparePassword = await bcrypt.compare(password, user.password);
+if (!comparePassword) {
+    return res.status(400).json({
+      message: "Invalid email or password",
+    });
+  }
+
+  const opt = Math.floor(10000 + Math.random() * 90000).toString();
+
+  const otpKey = `otp:${email}`;
+ await redisClient.set(otphey,JSON.stringify({ otp: opt, email }), { EX: 300 });
+
+
+const subject = "Your OTP for login";
+const html = getOtpHtml({email,opt})
+
+await sendEmail(email, subject, html);
+
+await redisClient.set(ratelimitKey, "true", { EX: 60 });
+
+
+
+
+
 });
