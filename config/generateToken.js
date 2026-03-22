@@ -46,3 +46,15 @@ return null;
 }catch (error) {
 return null;
 }}
+
+export const generateAccessToken = (id, res) => {
+    const accessToken = jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "15m" });
+    res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: true,   
+        sameSite: "strict",
+        maxAge: 15 * 60 * 1000,
+    });
+    return accessToken;
+
+}
