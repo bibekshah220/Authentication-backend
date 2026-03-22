@@ -8,6 +8,106 @@ import crypto from "crypto";
 import sendEmail from "../config/sendMail.js";
 import { getOtpHtml, getVerifyEmailHtml } from "../config/html.js";
 import { generateToken, generateAccessToken, verifyRefreshToken } from "../config/generateToken.js";
+// Add missing imports for route dependencies
+import { revokeRefreshToken } from "../config/generateToken.js";
+import { isAuth } from "../middlewares/isAuth.js";
+import { isAdmin } from "../middlewares/isAuth.js";
+// Reset password implementation
+export const resetPassword = TryCatch(async (req, res) => {
+  const { token } = req.params;
+  const { newPassword } = req.body;
+  if (!token || !newPassword) {
+    return res.status(400).json({ message: "Token and new password are required" });
+  }
+  const resetKey = `reset:${token}`;
+  const userData = await redisClient.get(resetKey);
+  if (!userData) {
+    return res.status(400).json({ message: "Invalid or expired reset token" });
+  }
+  const { id } = JSON.parse(userData);
+  const foundUser = await user.findById(id);
+  if (!foundUser) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  foundUser.password = await bcrypt.hash(newPassword, 10);
+  await foundUser.save();
+  await redisClient.del(resetKey);
+  await redisClient.del(`user:${foundUser._id}`);
+  return res.json({ message: "Password reset successfully" });
+});
+
+// Delete account implementation
+export const deleteAccount = TryCatch(async (req, res) => {
+  const userObj = req.user;
+  if (!userObj) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  await user.deleteOne({ _id: userObj._id });
+  await redisClient.del(`user:${userObj._id}`);
+  res.clearCookie("accessToken");
+  res.clearCookie("refreshToken");
+  return res.json({ message: "Account deleted successfully" });
+});
+
+export const requestOtp = TryCatch(async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ message: "Email is required" });
+  }
+  const existingUser = await user.findOne({ email });
+  if (!existingUser) {
+    return res.status(400).json({ message: "User with this email does not exist" });
+  }
+  const otp = Math.floor(10000 + Math.random() * 90000).toString();
+  const otpKey = `otp:${email}`;
+  await redisClient.set(otpKey, JSON.stringify({ otp, email }), { EX: 300 });
+  const subject = "Your OTP for login";
+  const html = getOtpHtml({ email, otp });
+  await sendEmail(email, subject, html);
+  return res.json({
+    message: "An OTP has been sent to your email address. It will expire in 5 minutes",
+  });
+});
+// Get all users (admin only)
+export const getAllUsers = TryCatch(async (req, res) => {
+  const users = await user.find().select("-password");
+  res.json({ users });
+});
+// Get user by ID (admin only)
+export const getUserById = TryCatch(async (req, res) => {
+  const { id } = req.params;
+  const foundUser = await user.findById(id).select("-password");
+  if (!foundUser) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  res.json({ user: foundUser });
+});
+// Update user by admin
+export const updateUserByAdmin = TryCatch(async (req, res) => {
+  const { id } = req.params;
+  const { name, email, role } = req.body;
+  const foundUser = await user.findById(id);
+  if (!foundUser) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  if (name) foundUser.name = name;
+  if (email) foundUser.email = email;
+  if (role) foundUser.role = role;
+  await foundUser.save();
+  await redisClient.del(`user:${foundUser._id}`);
+  res.json({ message: "User updated successfully", user: foundUser });
+});
+// Delete user by admin
+export const deleteUserByAdmin = TryCatch(async (req, res) => {
+  const { id } = req.params;
+  const foundUser = await user.findById(id);
+  if (!foundUser) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  await user.deleteOne({ _id: id });
+  await redisClient.del(`user:${id}`);
+  res.json({ message: "User deleted successfully" });
+});
 
 export const registerUser = TryCatch(async (req, res) => {
   const sanitizedData = sanitize(req.body);
