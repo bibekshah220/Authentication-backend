@@ -1,13 +1,5 @@
-import sanitize from "mongo-sanitize";
-import TryCatch from "../middlewares/tryCatch.js"
-import { registerSchema } from "../config/zod.js";
-import { redisClient } from "../server.js";
-import { user } from "../models/user.js";
-import bcrypt from "bcrypt";    
-import crypto from "crypto";    
-import sendEmail from "../config/sendMail.js";
-import { getOtpHtml, getVerifyEmailHtml } from "../config/html.js";
-import { generateToken } from "../config/generateToken.js";
+
+import { loginSchema } from "../config/zod.js";
 
 export const registerUser = TryCatch(async (req, res) => {
   const sanitizedData = sanitize(req.body);
@@ -51,19 +43,17 @@ export const registerUser = TryCatch(async (req, res) => {
       message: "User with this email already exists",
     });
   }
+
 const hashedPassword = await bcrypt.hash(password, 10);
-
 const verfiedtoken = crypto.randomBytes(32).toString("hex");
-
 const verifykey = `verify:${verfiedtoken}`;
-
 const dataStore = {
   name,
   email,
   password: hashedPassword,
-};  
-
-await redisClient.set(verifykey, dataStore, {EX: 300})
+};
+// Store as JSON string
+await redisClient.set(verifykey, JSON.stringify(dataStore), { EX: 300 });
 
 const subject = "verify your email for account creation";
 const html= getVerifyEmailHtml({
@@ -180,44 +170,17 @@ export const loginUser = TryCatch(async (req, res) => {
 
   await redisClient.del(ratelimitKey); 
 
-  return res.status(200).json({
-    message: "Login successful",
-    user: {
-      id: existingUser._id,
-      name: existingUser.name,
-      email: existingUser.email,
-    },
-  });
-
-  const user = await user.findOne({ email });
-  if (!user) {
-    return res.status(400).json({
-      message: "Invalid email or password",
-    });
-  }
-const comparePassword = await bcrypt.compare(password, user.password);
-if (!comparePassword) {
-    return res.status(400).json({
-      message: "Invalid email or password",
-    });
-  }
-
+  // Instead of returning login success here, send OTP for 2FA
   const otp = Math.floor(10000 + Math.random() * 90000).toString();
-
   const otpKey = `otp:${email}`;
- await redisClient.set(otpKey, JSON.stringify({ otp, email }), { EX: 300 });
-
-
-const subject = "Your OTP for login";
-const html = getOtpHtml({email, otp})
-
-await sendEmail(email, subject, html);
-
-await redisClient.set(ratelimitKey, "true", { EX: 60 });
-
-res.json({
-  message: "if your email is valid, an OTP has been sent to your email address. it will expire in 5 minutes",
-});
+  await redisClient.set(otpKey, JSON.stringify({ otp, email }), { EX: 300 });
+  const subject = "Your OTP for login";
+  const html = getOtpHtml({ email, otp });
+  await sendEmail(email, subject, html);
+  await redisClient.set(ratelimitKey, "true", { EX: 60 });
+  return res.json({
+    message: "If your email is valid, an OTP has been sent to your email address. It will expire in 5 minutes",
+  });
 
 });
 
@@ -247,14 +210,21 @@ export const verifyOtp = TryCatch(async (req, res) => {
 
   await redisClient.del(otpKey);
 
-  let user = await user.findOne({ email });
-
-const tokenData = await generateToken(user._id, res);
-
-res.status(200).json({
-  message: `welcome ${user.name}`,
-  user,
-});
+  let foundUser = await user.findOne({ email });
+  if (!foundUser) {
+    return res.status(400).json({
+      message: "User not found",
+    });
+  }
+  await generateToken(foundUser._id, res);
+  res.status(200).json({
+    message: `Welcome ${foundUser.name}`,
+    user: {
+      id: foundUser._id,
+      name: foundUser.name,
+      email: foundUser.email,
+    },
+  });
 
 
 
