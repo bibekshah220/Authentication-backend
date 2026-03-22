@@ -214,6 +214,9 @@ await sendEmail(email, subject, html);
 
 await redisClient.set(ratelimitKey, "true", { EX: 60 });
 
+res.json({
+  message: "if your email is valid, an OTP has been sent to your email address. it will expire in 5 minutes",
+});
 
 
 
