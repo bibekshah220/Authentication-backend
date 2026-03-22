@@ -10,6 +10,9 @@ router.post("/verify/:token", verifyUser);
 router.post("/login", loginUser);
 router.post("/request-otp", requestOtp);
 router.post("/verify-otp", verifyOtp);
+router.post("/refresh-token", refreshToken);
+router.post("/logout", logoutUser);
+
 
 export default router;
 
