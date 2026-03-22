@@ -244,7 +244,15 @@ export const verifyOtp = TryCatch(async (req, res) => {
     });
   }
 
+  await redisClient.del(otpKey);
 
+  let user = await user.findOne({ email });
+
+
+
+
+
+  
 });
 
 
