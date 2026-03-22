@@ -7,6 +7,7 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";    
 import sendEmail from "../config/sendMail.js";
 import { getOtpHtml, getVerifyEmailHtml } from "../config/html.js";
+import { generateToken } from "../config/generateToken.js";
 
 export const registerUser = TryCatch(async (req, res) => {
   const sanitizedData = sanitize(req.body);
@@ -248,13 +249,13 @@ export const verifyOtp = TryCatch(async (req, res) => {
 
   let user = await user.findOne({ email });
 
+const tokenData = await generateToken(user._id, res);
 
-
-
-
-  
+res.status(200).json({
+  message: `welcome ${user.name}`,
+  user,
 });
 
 
 
-
+});
