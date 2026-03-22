@@ -1,5 +1,13 @@
-import { generateAccessToken, verifyRefreshToken } from "../config/generateToken.js";
-import { loginSchema } from "../config/zod.js";
+import sanitize from "mongo-sanitize";
+import TryCatch from "../middlewares/tryCatch.js";
+import { registerSchema, loginSchema } from "../config/zod.js";
+import { redisClient } from "../server.js";
+import { user } from "../models/user.js";
+import bcrypt from "bcrypt";
+import crypto from "crypto";
+import sendEmail from "../config/sendMail.js";
+import { getOtpHtml, getVerifyEmailHtml } from "../config/html.js";
+import { generateToken, generateAccessToken, verifyRefreshToken } from "../config/generateToken.js";
 
 export const registerUser = TryCatch(async (req, res) => {
   const sanitizedData = sanitize(req.body);
@@ -28,7 +36,7 @@ export const registerUser = TryCatch(async (req, res) => {
 
   const { name, email, password } = validation.data;
 
-  const ratemitKey = `register-rate-limit${req.ip}:${email}`;
+  const ratemitKey = `register-rate-limit:${req.ip}:${email}`;
 
   if (await redisClient.get(ratemitKey)) {
     return res.status(429).json({
@@ -52,7 +60,6 @@ export const registerUser = TryCatch(async (req, res) => {
     email,
     password: hashedPassword,
   };
-  // Store as JSON string
   await redisClient.set(verifykey, JSON.stringify(dataStore), { EX: 300 });
 
   const subject = "verify your email for account creation";
@@ -109,7 +116,6 @@ export const verifyUser = TryCatch(async (req, res) => {
     email: userdata.email,
     password: userdata.password,
   });
-
   await newUser.save();
 
   return res.status(201).json({
@@ -229,34 +235,47 @@ export const verifyOtp = TryCatch(async (req, res) => {
 });
 
 export const myProfile = TryCatch(async (req, res) => {
-  const user = req.user;
+  const userObj = req.user;
   res.json({
     message: "User profile fetched successfully",
     user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
+      id: userObj._id,
+      name: userObj.name,
+      email: userObj.email,
     },
   });
 });
 
 export const refreshToken = TryCatch(async (req, res) => {
-  const refreshToken = req.cookies.refreshToken;
-  if (!refreshToken) {
+  const refreshTokenCookie = req.cookies.refreshToken;
+  if (!refreshTokenCookie) {
     return res.status(401).json({
       message: "Refresh token not provided",
     });
   }
-});
-
-const decoded = await verifyRefreshToken(refreshToken);
-if (!decoded) {
-  return res.status(401).json({
-    message: "Invalid refresh token",
-  });
-}
-
+  const decoded = await verifyRefreshToken(refreshTokenCookie);
+  if (!decoded) {
+    return res.status(401).json({
+      message: "Invalid refresh token",
+    });
+  }
   generateAccessToken(decoded.id, res);
   return res.json({
     message: "Access token refreshed successfully",
   });
+});
+
+export const logoutUser = TryCatch(async (req, res) => {
+  const refreshTokenCookie = req.cookies.refreshToken;
+  if (refreshTokenCookie) {
+    const decoded = await verifyRefreshToken(refreshTokenCookie);
+    if (decoded && typeof revokeRefreshToken === 'function') {
+      await revokeRefreshToken(decoded);
+    }
+  }
+  res.clearCookie("accessToken");
+  res.clearCookie("refreshToken");
+  return res.json({
+    message: "Logged out successfully",
+  });
+});
