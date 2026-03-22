@@ -201,14 +201,14 @@ if (!comparePassword) {
     });
   }
 
-  const opt = Math.floor(10000 + Math.random() * 90000).toString();
+  const otp = Math.floor(10000 + Math.random() * 90000).toString();
 
   const otpKey = `otp:${email}`;
- await redisClient.set(otphey,JSON.stringify({ otp: opt, email }), { EX: 300 });
+ await redisClient.set(otpKey, JSON.stringify({ otp, email }), { EX: 300 });
 
 
 const subject = "Your OTP for login";
-const html = getOtpHtml({email,opt})
+const html = getOtpHtml({email, otp})
 
 await sendEmail(email, subject, html);
 
