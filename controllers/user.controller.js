@@ -279,3 +279,24 @@ export const logoutUser = TryCatch(async (req, res) => {
     message: "Logged out successfully",
   });
 });
+
+export const updateProfile = TryCatch(async (req, res) => {
+  const userObj = req.user;
+  const { name } = req.body;  
+  if (!name) {
+    return res.status(400).json({
+      message: "Name is required",
+    });
+  }
+  userObj.name = name;
+  await userObj.save();
+  await redisClient.del(`user:${userObj._id}`);
+  return res.json({
+    message: "Profile updated successfully",
+    user: {
+      id: userObj._id,
+      name: userObj.name,
+      email: userObj.email,
+    },
+  });
+});
