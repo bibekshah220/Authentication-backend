@@ -1,4 +1,5 @@
 
+import { verifyRefreshToken } from "../config/generateToken.js";
 import { loginSchema } from "../config/zod.js";
 
 export const registerUser = TryCatch(async (req, res) => {
@@ -239,3 +240,18 @@ export  const myProfile = TryCatch(async (req, res) => {
   });
 });
 
+export const refreshToken = TryCatch(async (req, res) => {
+  const refreshToken = req.cookies.refreshToken;
+  if (!refreshToken) {
+    return res.status(401).json({
+      message: "Refresh token not provided",
+    });
+  }   
+})
+
+const decoded = await verifyRefreshToken(refreshToken);
+if (!decoded) {
+  return res.status(401).json({
+    message: "Invalid refresh token",
+  });
+}
