@@ -10,8 +10,7 @@ import { getOtpHtml, getVerifyEmailHtml } from "../config/html.js";
 import { generateToken, generateAccessToken, verifyRefreshToken } from "../config/generateToken.js";
 // Add missing imports for route dependencies
 import { revokeRefreshToken } from "../config/generateToken.js";
-import { isAuth } from "../middlewares/isAuth.js";
-import { isAdmin } from "../middlewares/isAuth.js";
+import { isAuth, isAdmin } from "../middlewares/isAuth.js";
 // Reset password implementation
 export const resetPassword = TryCatch(async (req, res) => {
   const { token } = req.params;

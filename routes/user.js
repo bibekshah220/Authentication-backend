@@ -18,9 +18,7 @@ import {
 	updateUserByAdmin,
 	deleteUserByAdmin
 } from '../controllers/user.controller.js';
-import { isAuth } from '../middlewares/isAuth.js';
-import { isAdmin } from '../middlewares/isAuth.js';
-import { isAuth } from '../middlewares/isAuth.js';
+import { isAuth, isAdmin } from '../middlewares/isAuth.js';
 
 const router = express.Router();
 
